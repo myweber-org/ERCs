@@ -122,4 +122,65 @@ contract TokenVesting is Ownable {
         uint256 timeElapsed = block.timestamp - schedule.startTimestamp;
         return (schedule.totalAmount * timeElapsed) / schedule.vestingDuration;
     }
+}// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.19;
+
+contract TokenVesting {
+    address public immutable beneficiary;
+    uint256 public immutable startTime;
+    uint256 public immutable duration;
+    uint256 public immutable totalAmount;
+    uint256 public released;
+
+    event TokensReleased(uint256 amount, uint256 timestamp);
+
+    constructor(address _beneficiary, uint256 _duration, uint256 _totalAmount) {
+        require(_beneficiary != address(0), "Beneficiary cannot be zero address");
+        require(_duration > 0, "Duration must be positive");
+        require(_totalAmount > 0, "Total amount must be positive");
+
+        beneficiary = _beneficiary;
+        startTime = block.timestamp;
+        duration = _duration;
+        totalAmount = _totalAmount;
+        released = 0;
+    }
+
+    function releasableAmount() public view returns (uint256) {
+        if (block.timestamp < startTime) {
+            return 0;
+        }
+        
+        uint256 elapsedTime = block.timestamp - startTime;
+        if (elapsedTime > duration) {
+            elapsedTime = duration;
+        }
+        
+        uint256 vestedAmount = (totalAmount * elapsedTime) / duration;
+        return vestedAmount - released;
+    }
+
+    function release() external {
+        uint256 amount = releasableAmount();
+        require(amount > 0, "No tokens available for release");
+        
+        released += amount;
+        
+        // In production, this would transfer actual tokens
+        // For this example, we just emit an event
+        emit TokensReleased(amount, block.timestamp);
+    }
+
+    function vestedAmount() public view returns (uint256) {
+        if (block.timestamp < startTime) {
+            return 0;
+        }
+        
+        uint256 elapsedTime = block.timestamp - startTime;
+        if (elapsedTime > duration) {
+            return totalAmount;
+        }
+        
+        return (totalAmount * elapsedTime) / duration;
+    }
 }
